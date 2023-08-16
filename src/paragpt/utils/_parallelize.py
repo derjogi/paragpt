@@ -8,7 +8,8 @@ class Parallelize:
         self.operation = operation
 
     def __call__(self, input: List) -> List:
-        pandarallel.initialize(progress_bar=False)
+        # For some reason parallelize doesn't work. Disable it for now.
+        # pandarallel.initialize(progress_bar=False)
         df = pd.DataFrame({"data": input})
-        df = df.data.parallel_apply(lambda x : self.operation(x))
+        df = df.data.apply(lambda x : self.operation(x))
         return df.to_list()

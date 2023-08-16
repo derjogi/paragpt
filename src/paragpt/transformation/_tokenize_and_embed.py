@@ -25,9 +25,9 @@ def tokenize_and_embed(
 
     df[n_token_name] = df.snippet.apply(lambda x: len(encoding_model.encode(x)))
 
-    pandarallel.initialize(progress_bar=False)
+    # pandarallel.initialize(progress_bar=False)
 
-    df[embedding_name] = df.snippet.parallel_apply(
+    df[embedding_name] = df.snippet.apply(
         partial(_get_embedding, embedding_model=embedding_model)
     )
 

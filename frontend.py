@@ -138,8 +138,9 @@ def main():
                     st.text_area(
                         "paraphrased", paraphrased, label_visibility="collapsed", height=300
                     )
-                except:
-                    st.error('Something Went Wrong!! Check your API key', icon="🚨")
+                except Exception as error:
+                    print("An error occurred:", type(error).__name__, "–", error)
+                    st.error('Something Went Wrong!! Check the logs.', icon="🚨")
 
     return
 

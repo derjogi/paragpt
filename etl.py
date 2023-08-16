@@ -1,7 +1,7 @@
-import re
-import numpy as np
 import pathlib as pt
-import pandas as pd
+import re
+
+# import openai
 try:
     import paragpt as sg
 except ModuleNotFoundError:
@@ -9,7 +9,6 @@ except ModuleNotFoundError:
     import pathlib as pt
     sys.path.append((pt.Path(__file__).parent/"src").as_posix())
     import paragpt as sg
-from numpy import vectorize
 from functools import partial
 import paragpt.transformation as T
 from triple_quote_clean import TripleQuoteCleaner
@@ -57,8 +56,8 @@ train_of_thought = [
 _system_prompt = (
     tqc
     ** """
-        You are a helpful ai assistant working in the data space within the Australian Energy Market.
-        You are currently assisting the data science and data engineering team
+        You are a helpful ai assistant observing a meeting.
+        Your job is to take minutes, i.e. to note down the important things that were said and also any action points. 
     """
 )
 
@@ -106,8 +105,9 @@ def load(
 
 
 if __name__ == "__main__":
-    file_path = pt.Path("./sample2.vtt")
+    file_path = pt.Path("./transcript.vtt")
     paraphraser_model = "gpt-3.5-turbo"
+    # openai.api_key = "..."
     # stage_1_cache = "stage1.parquet"
     # stage_2_cache = "stage2.md"
     stage_1_cache = None

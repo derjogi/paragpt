@@ -38,6 +38,7 @@ def _grouper(
     embedding_name="embedding",
     snippet_name="snippet",
     n_token_name="n_tokens",
+    group_weight: int = 1500,
     order=2
 ) -> pd.DataFrame:
     embeddings: pd.Series
@@ -58,10 +59,17 @@ def _grouper(
     snippet_index_iterator = iter(enumerate(snippets))
 
     current_minima = minmimas.popleft()
-
+    sum = 0
     for i in df.index:
         if i == current_minima:
             current_minima = minmimas.popleft()
+            sum = 0
+        sum += df.at[i, n_token_name]
+        # It might be that the sum of tokens for the grouped snippets is too big,
+        # so prevent them from being grouped together in the first place.
+        if sum > group_weight:
+            current_minima += 1
+            sum = df.at[i, n_token_name]
         group_assignment.append(current_minima)
 
     df["group"] = group_assignment
@@ -80,7 +88,7 @@ def _grouper(
 
 
 def group_by_embedding(df: pd.DataFrame, order=2, group_weight=1200) -> List[str]:
-    snippet_n_tokens = _grouper(df.copy(), "\n", order=order)
+    snippet_n_tokens = _grouper(df.copy(), "\n", group_weight=group_weight, order=order)
     new_groupings = []
     current_group = 0
     current_weight = 0
@@ -96,3 +104,11 @@ def group_by_embedding(df: pd.DataFrame, order=2, group_weight=1200) -> List[str
     output = snippet_n_tokens.groupby("group")["snippet"].apply(lambda x : "\n".join(x)).to_list()
 
     return output
+
+
+if __name__ == "__main__":
+    file_path = pt.Path("../../../df_out.csv")
+    df = pd.read_csv(file_path, index_col=0, dtype={"embedding": object})
+    df["embedding"] = df["embedding"].apply(eval)
+
+    group_by_embedding(df, group_weight=1500)
