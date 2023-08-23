@@ -2,7 +2,7 @@ import pandas as pd
 from typing import List
 
 
-def _get_embedding(snippet: str, embedding_model: str) -> List[int]:
+def _get_embedding(snippet: str, embedding_model: str) -> List[float]:
     from openai.embeddings_utils import get_embedding
     return get_embedding(snippet, engine=embedding_model)
 

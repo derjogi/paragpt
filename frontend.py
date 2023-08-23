@@ -144,6 +144,6 @@ def main():
 
     return
 
-
+# run this with `streamlit run frontend.py`
 if __name__ == "__main__":
     main()

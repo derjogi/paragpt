@@ -1,7 +1,7 @@
 import pathlib as pt
 import re
 
-# import openai
+import openai
 try:
     import paragpt as sg
 except ModuleNotFoundError:
@@ -9,6 +9,7 @@ except ModuleNotFoundError:
     import pathlib as pt
     sys.path.append((pt.Path(__file__).parent/"src").as_posix())
     import paragpt as sg
+import summargpt
 from functools import partial
 import paragpt.transformation as T
 from triple_quote_clean import TripleQuoteCleaner
@@ -101,11 +102,15 @@ def load(
 
     transformed = transformer(string)
 
+    convo = "clean_conversation.txt"
+    summargpt.summarize.save_to_file(transformed, convo)
+    summargpt.summarize.main(convo)
+
     return transformed
 
 
 if __name__ == "__main__":
-    file_path = pt.Path("./transcript.vtt")
+    file_path = pt.Path("./transcript_econ_08_17.vtt")
     paraphraser_model = "gpt-3.5-turbo"
     # openai.api_key = "..."
     # stage_1_cache = "stage1.parquet"
