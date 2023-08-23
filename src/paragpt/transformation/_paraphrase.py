@@ -47,7 +47,7 @@ def paraphrase(
     n_retries=5
 ) -> str:
     import openai
-    from openai import APIError
+    from openai import APIError, InvalidRequestError
     import pandas as pd
     from triple_quote_clean import TripleQuoteCleaner
 
@@ -74,8 +74,16 @@ def paraphrase(
         except APIError as e:
             if retry > n_retries:
                 raise e
+        except InvalidRequestError as e:
+            # just so I can intercept when there are too many tokens for debugging, so I know which message to shorten, and why it's too long.
+            print(f"Failed on message:\n"
+                  f">> {conversation}\n\n"
+                  f"with error {e}\n\n"
+                  f"ChatGPT input:\n"
+                  f">>{gpt_input}")
+            raise e
         retry += 1
 
     message = output["choices"][0]["message"]["content"]
-
+    print(f"Summarised:\n{conversation}\n-->{message}\n")
     return message

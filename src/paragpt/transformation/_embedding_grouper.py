@@ -1,13 +1,16 @@
-import re
 import math
-import argparse
+import math
+import pathlib as pt
+from collections import deque
+from os.path import exists
+from typing import List
+
 import numpy as np
 import pandas as pd
-import pathlib as pt
-from typing import List
-from collections import deque
 from scipy.signal import argrelextrema
 from sklearn.metrics.pairwise import cosine_similarity
+
+from summargpt.summarize import read_from_file, save_to_file
 
 
 def _rev_sigmoid(x: float) -> float:
@@ -53,25 +56,66 @@ def _grouper(
     minmimas = deque(minmimas)
 
     if not (len(df) in minmimas):
-        minmimas.append(len(snippets))
+        minmimas.append(len(snippets))  # A group to collect all remaining snippets
 
     group_assignment = []
-    snippet_index_iterator = iter(enumerate(snippets))
 
     current_minima = minmimas.popleft()
-    sum = 0
+    token_sum = 0
+    rows_to_replace = {}
     for i in df.index:
-        if i == current_minima:
+        while i == current_minima:
+            # due to snippets sometimes needing to be split up
+            # the minima might need to increase more than once
             current_minima = minmimas.popleft()
-            sum = 0
-        sum += df.at[i, n_token_name]
-        # It might be that the sum of tokens for the grouped snippets is too big,
-        # so prevent them from being grouped together in the first place.
-        if sum > group_weight:
-            current_minima += 1
-            sum = df.at[i, n_token_name]
-        group_assignment.append(current_minima)
+            token_sum = 0
+        tokens_for_this_snippet = df.at[i, n_token_name]
+        # Some snippets (one uninterrupted speaker) are too long in themselves already.
+        # Split those snippets into approximate halfs (by sentence).
+        # Not an accurate science, but beats failing.
+        if tokens_for_this_snippet > group_weight:
+            snippet = df.at[i, snippet_name]
+            sentences = snippet.split(".")
+            divider = math.ceil(tokens_for_this_snippet / group_weight)
+            tokens_for_this_snippet = tokens_for_this_snippet/divider
+            for j in range(divider):
+                if j+1 == divider:
+                    # take all sentences that are left, necessary in case the division isn't equal
+                    chunk = sentences
+                else:
+                    sentences_to_take = int(len(sentences) / divider)
+                    chunk = sentences[:sentences_to_take]
+                    sentences = sentences[sentences_to_take:]
+                entry = df.loc[i]
+                entry[snippet_name] = ".".join(chunk)
+                entry[n_token_name] = tokens_for_this_snippet
+                if i in rows_to_replace:
+                    rows_to_replace[i].append(entry)
+                else:
+                    rows_to_replace[i] = [entry]
 
+                # Put each of them into their own group
+                current_minima += 1
+                group_assignment.append(current_minima)
+            token_sum = tokens_for_this_snippet
+
+        else :
+            token_sum += tokens_for_this_snippet
+            # It might be that the sum of tokens for the grouped snippets is too big,
+            # so prevent them from being grouped together.
+            if token_sum > group_weight:
+                current_minima += 1
+                token_sum = df.at[i, n_token_name]
+            group_assignment.append(current_minima)
+
+    num_new_rows = 0
+    for r in rows_to_replace:
+        replacements = rows_to_replace[r]
+        index_in_df = r + num_new_rows
+        df = df.drop(index_in_df)
+        new_rows = pd.DataFrame(replacements)
+        df = pd.concat([df.iloc[:index_in_df], new_rows, df.iloc[index_in_df:]]).reset_index(drop=True)
+        num_new_rows += (len(replacements) - 1)
     df["group"] = group_assignment
 
     group_by = df.groupby("group")
@@ -88,7 +132,13 @@ def _grouper(
 
 
 def group_by_embedding(df: pd.DataFrame, order=2, group_weight=1200) -> List[str]:
-    snippet_n_tokens = _grouper(df.copy(), "\n", group_weight=group_weight, order=order)
+    snippet_n_token_file = "snippet_n_token_embeddings.txt"
+    if exists(snippet_n_token_file):
+        snippet_n_tokens = read_from_file(snippet_n_token_file)
+    else:
+        snippet_n_tokens = _grouper(df.copy(), "\n", group_weight=group_weight, order=order)
+        save_to_file(snippet_n_tokens, snippet_n_token_file)
+
     new_groupings = []
     current_group = 0
     current_weight = 0

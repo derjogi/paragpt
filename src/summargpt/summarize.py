@@ -32,20 +32,39 @@ def save_to_file(content, filename: str = None) -> str:
             filename = "out_%s.txt" % i
 
     with open(filename, "w+", encoding="utf-8") as fp:
-        try:
+        if isinstance(content, dict):  # Check if content is a dict (JSON)
             json.dump(content, fp, indent=4)
-        except TypeError:
+        elif isinstance(content, pd.DataFrame):  # Check if content is a DataFrame
+            content.to_csv(fp, index=False)
+        elif isinstance(content, str):  # Check if content is a string
             fp.write(content)
+        else:
+            print(f"Unsupported data type: {type(content)}")
 
     return filename
 
 def read_from_file(filename: str, load_as_json: bool = True) -> str:
-    with open(filename, 'r') as f:
-        content = f.read()
-        try :
-            return eval(content)
-        except TypeError:
-            return content
+    try:
+        # Try to load as JSON
+        with open(filename, "r", encoding="utf-8") as fp:
+            return json.load(fp)
+    except json.JSONDecodeError:
+        pass
+
+    try:
+        # Try to load as DataFrame
+        return pd.read_csv(filename)
+    except pd.errors.ParserError:
+        pass
+
+    try:
+        # Try to load as string
+        with open(filename, "r", encoding="utf-8") as fp:
+            return fp.read()
+    except Exception as e:
+        print(f"Failed to read file: {e}")
+
+    return None
 
 def main(convo_file: str, chunks_file: str = None, stage1_file: str = None, stage2_file: str = None):
     if chunks_file == None or not exists(chunks_file):

@@ -2,6 +2,9 @@ import pathlib as pt
 import re
 
 import openai
+
+from summargpt.summarize import read_from_file
+
 try:
     import paragpt as sg
 except ModuleNotFoundError:
@@ -62,9 +65,6 @@ _system_prompt = (
     """
 )
 
-extractor = sg.utils.Pipeline(sg.extraction.read_text)
-
-
 def load(
     string: str,
     paraphraser_model: str = "gpt-3.5-turbo",
@@ -72,7 +72,7 @@ def load(
     stage_1_cache=None,
     stage_2_cache=None,
     max_tokens_per_chunk=1500,
-    start_chunking=2800
+    start_chunking=2500
 ) -> str:
     transformer = sg.utils.Pipeline(
         T.clean_teams_vtt,
@@ -102,22 +102,28 @@ def load(
 
     transformed = transformer(string)
 
-    convo = "clean_conversation.txt"
+    convo = "paraphrased_conversation.txt"
     summargpt.summarize.save_to_file(transformed, convo)
     summargpt.summarize.main(convo)
 
     return transformed
 
 
+def read_text(file: pt.Path)->str:
+    with open(file, "r") as f:
+        content = f.read()
+    return content
+
+
 if __name__ == "__main__":
-    file_path = pt.Path("./transcript_econ_08_17.vtt")
+    file_path = "./transcript_econ_08_17.vtt"
     paraphraser_model = "gpt-3.5-turbo"
     # openai.api_key = "..."
     # stage_1_cache = "stage1.parquet"
     # stage_2_cache = "stage2.md"
     stage_1_cache = None
     stage_2_cache = None
-    content = extractor(file_path)
+    content = read_from_file(file_path)
     output = load(
         content,
         paraphraser_model=paraphraser_model,
